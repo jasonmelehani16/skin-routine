@@ -4,12 +4,14 @@ const STORE = 'skin-routine-v1';
 const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const DOW_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// Four daily checklists, each with its own step list.
+// Six daily checklists, each with its own step list.
 const CHECKLISTS = [
   { id: 'faceAM', routine: 'faceAM', label: 'Face', when: 'Morning' },
   { id: 'handsAM', routine: 'handsAM', label: 'Hands', when: 'Morning' },
   { id: 'facePM', routine: 'facePM', label: 'Face', when: 'Night' },
   { id: 'handsPM', routine: 'handsPM', label: 'Hands', when: 'Night' },
+  { id: 'hairAM', routine: 'hairAM', label: 'Hair', when: 'Morning' },
+  { id: 'hairPM', routine: 'hairPM', label: 'Hair', when: 'Night' },
 ];
 
 const ROUTINE_TABS = [
@@ -17,6 +19,8 @@ const ROUTINE_TABS = [
   { id: 'facePM', label: 'Face PM' },
   { id: 'handsAM', label: 'Hands AM' },
   { id: 'handsPM', label: 'Hands PM' },
+  { id: 'hairAM', label: 'Hair AM' },
+  { id: 'hairPM', label: 'Hair PM' },
 ];
 
 /* ---------- dates ---------- */
@@ -70,24 +74,40 @@ function faceSeed() {
   };
 }
 
+// Minoxidil Mon-Sat; microneedling Sunday night, which replaces that day's minoxidil.
+function hairSeed() {
+  const minox = 'Apply the labeled dose to a dry scalp, directly on the thinning areas. Massage in, wash hands after, and let it dry before styling.';
+  return {
+    hairAM: { steps: [
+      step('Minoxidil', minox, '', { type: 'weekdays', days: [1, 2, 3, 4, 5, 6] }),
+    ] },
+    hairPM: { steps: [
+      step('Minoxidil', minox, '', { type: 'weekdays', days: [1, 2, 3, 4, 5, 6] }),
+      step('Microneedling', 'Weekly. Clean scalp, sanitize the tool before and after. Work gently over the thinning areas. No minoxidil today.', '', { type: 'weekdays', days: [0] }),
+    ] },
+  };
+}
+
 function seed() {
   return {
     version: 1,
-    rev: 3,
+    rev: 4,
     startDate: todayKey(),
-    routines: { ...faceSeed(), ...handsSeed() },
+    routines: { ...faceSeed(), ...handsSeed(), ...hairSeed() },
     log: {},
   };
 }
 
 // rev 2: hands split into separate AM and PM lists, loaded with the real hands routine.
 // rev 3: real face routine replaces the placeholders.
+// rev 4: hair routine added (existing routines untouched).
 function migrate(s) {
   if (s && s.routines && typeof s.routines === 'object') {
     const rev = s.rev || 1;
     if (rev < 2) { delete s.routines.hands; Object.assign(s.routines, handsSeed()); }
     if (rev < 3) Object.assign(s.routines, faceSeed());
-    s.rev = Math.max(rev, 3);
+    if (rev < 4) Object.assign(s.routines, hairSeed());
+    s.rev = Math.max(rev, 4);
   }
   return s;
 }
