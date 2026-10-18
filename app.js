@@ -62,7 +62,7 @@ function faceSeed() {
     faceAM: { steps: [
       step('Cleanse', 'Massage gently over the face and down through the beard to clear overnight buildup. Rinse with lukewarm water and pat dry.', 'CeraVe Hydrating Cleanser'),
       step('Antioxidant serum', '3-4 drops across the forehead, temples, cheeks, and nose. Let it absorb for 1-2 minutes.', 'Timeless 20% Vitamin C + E Ferulic Acid Serum'),
-      step('Beard oil', '2-3 drops on a slightly damp beard, massaged down to the skin underneath.', 'Jack Black Beard Oil', { type: 'optional' }),
+      step('Beard oil', '2-3 drops on a slightly damp beard, massaged down to the skin underneath.', 'Jack Black Beard Oil'),
     ] },
     facePM: { steps: [
       step('Cleanse', 'Wash away sunscreen, sweat, and debris from the day. Rinse and pat dry.', 'CeraVe Hydrating Cleanser'),
@@ -91,7 +91,7 @@ function hairSeed() {
 function seed() {
   return {
     version: 1,
-    rev: 5,
+    rev: 6,
     startDate: todayKey(),
     routines: { ...faceSeed(), ...handsSeed(), ...hairSeed() },
     log: {},
@@ -102,6 +102,7 @@ function seed() {
 // rev 3: real face routine replaces the placeholders.
 // rev 4: hair routine added (existing routines untouched).
 // rev 5: hair moved from Sunday microneedling to Monday; only schedules still at the old default are changed.
+// rev 6: beard oil becomes a daily step; only changed if it is still set to "as needed".
 function migrate(s) {
   if (s && s.routines && typeof s.routines === 'object') {
     const rev = s.rev || 1;
@@ -118,7 +119,12 @@ function migrate(s) {
       move('hairPM', 'Minoxidil', [1, 2, 3, 4, 5, 6], [2, 3, 4, 5, 6, 0]);
       move('hairPM', 'Microneedling', [0], [1]);
     }
-    s.rev = Math.max(rev, 5);
+    if (rev < 6) {
+      for (const st of (s.routines.faceAM && s.routines.faceAM.steps) || []) {
+        if (st.name === 'Beard oil' && st.sched && st.sched.type === 'optional') st.sched = { type: 'daily' };
+      }
+    }
+    s.rev = Math.max(rev, 6);
   }
   return s;
 }
