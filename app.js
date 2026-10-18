@@ -53,34 +53,41 @@ function handsSeed() {
   };
 }
 
+function faceSeed() {
+  return {
+    faceAM: { steps: [
+      step('Cleanse', 'Massage gently over the face and down through the beard to clear overnight buildup. Rinse with lukewarm water and pat dry.', 'CeraVe Hydrating Cleanser'),
+      step('Antioxidant serum', '3-4 drops across the forehead, temples, cheeks, and nose. Let it absorb for 1-2 minutes.', 'Timeless 20% Vitamin C + E Ferulic Acid Serum'),
+      step('Beard oil', '2-3 drops on a slightly damp beard, massaged down to the skin underneath.', 'Jack Black Beard Oil', { type: 'optional' }),
+    ] },
+    facePM: { steps: [
+      step('Cleanse', 'Wash away sunscreen, sweat, and debris from the day. Rinse and pat dry.', 'CeraVe Hydrating Cleanser'),
+      // Choose one active per night, never layered. Default split: BHA Wed + Sun, Differin the other five nights.
+      step('Differin', 'On completely dry skin, pea-sized amount across forehead, nose, upper cheeks, and outer eye corners. Avoid the eyelids. Not on BHA nights.', 'Differin Gel 0.1% Adapalene', { type: 'weekdays', days: [1, 2, 4, 5, 6] }),
+      step('BHA exfoliant', 'Pat a few drops onto the nose, T-zone, and beard line to clear pores and prevent ingrown hairs. Replaces Differin on these nights.', '2% BHA Salicylic Acid Liquid Exfoliant', { type: 'weekdays', days: [0, 3] }),
+      step('Barrier moisturizer', 'Finish with the lotion. Gently tap any excess along the orbital bone under the eyes.', 'CeraVe PM Facial Moisturizing Lotion'),
+    ] },
+  };
+}
+
 function seed() {
   return {
     version: 1,
-    rev: 2,
+    rev: 3,
     startDate: todayKey(),
-    routines: {
-      faceAM: { steps: [
-        step('Cleanse', 'Wet face with lukewarm water, massage cleanser for 30 seconds, rinse.', 'Placeholder cleanser'),
-        step('Moisturize', 'Apply a pea-sized amount over face and neck.', 'Placeholder moisturizer'),
-        step('Sunscreen', 'Two finger-lengths for face and neck. Last step.', 'Placeholder SPF'),
-      ] },
-      facePM: { steps: [
-        step('Cleanse', 'Massage cleanser for 30 seconds, rinse with lukewarm water.', 'Placeholder cleanser'),
-        step('Treatment', 'Thin layer on dry skin, avoid the eye area.', 'Placeholder treatment', { type: 'weekdays', days: [1, 4] }),
-        step('Moisturize', 'Apply a pea-sized amount over face and neck.', 'Placeholder moisturizer'),
-      ] },
-      ...handsSeed(),
-    },
+    routines: { ...faceSeed(), ...handsSeed() },
     log: {},
   };
 }
 
 // rev 2: hands split into separate AM and PM lists, loaded with the real hands routine.
+// rev 3: real face routine replaces the placeholders.
 function migrate(s) {
-  if (s && s.routines && typeof s.routines === 'object' && (s.rev || 1) < 2) {
-    delete s.routines.hands;
-    Object.assign(s.routines, handsSeed());
-    s.rev = 2;
+  if (s && s.routines && typeof s.routines === 'object') {
+    const rev = s.rev || 1;
+    if (rev < 2) { delete s.routines.hands; Object.assign(s.routines, handsSeed()); }
+    if (rev < 3) Object.assign(s.routines, faceSeed());
+    s.rev = Math.max(rev, 3);
   }
   return s;
 }
