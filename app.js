@@ -74,16 +74,16 @@ function faceSeed() {
   };
 }
 
-// Minoxidil Mon-Sat; microneedling Sunday night, which replaces that day's minoxidil.
+// Minoxidil Tue-Sun; microneedling Monday night, which replaces that day's minoxidil.
 function hairSeed() {
   const minox = 'Apply the labeled dose to a dry scalp, directly on the thinning areas. Massage in, wash hands after, and let it dry before styling.';
   return {
     hairAM: { steps: [
-      step('Minoxidil', minox, '', { type: 'weekdays', days: [1, 2, 3, 4, 5, 6] }),
+      step('Minoxidil', minox, '', { type: 'weekdays', days: [2, 3, 4, 5, 6, 0] }),
     ] },
     hairPM: { steps: [
-      step('Minoxidil', minox, '', { type: 'weekdays', days: [1, 2, 3, 4, 5, 6] }),
-      step('Microneedling', 'Weekly. Clean scalp, sanitize the tool before and after. Work gently over the thinning areas. No minoxidil today.', '', { type: 'weekdays', days: [0] }),
+      step('Minoxidil', minox, '', { type: 'weekdays', days: [2, 3, 4, 5, 6, 0] }),
+      step('Microneedling', 'Weekly. Clean scalp, sanitize the tool before and after. Work gently over the thinning areas. No minoxidil today.', '', { type: 'weekdays', days: [1] }),
     ] },
   };
 }
@@ -91,7 +91,7 @@ function hairSeed() {
 function seed() {
   return {
     version: 1,
-    rev: 4,
+    rev: 5,
     startDate: todayKey(),
     routines: { ...faceSeed(), ...handsSeed(), ...hairSeed() },
     log: {},
@@ -101,13 +101,24 @@ function seed() {
 // rev 2: hands split into separate AM and PM lists, loaded with the real hands routine.
 // rev 3: real face routine replaces the placeholders.
 // rev 4: hair routine added (existing routines untouched).
+// rev 5: hair moved from Sunday microneedling to Monday; only schedules still at the old default are changed.
 function migrate(s) {
   if (s && s.routines && typeof s.routines === 'object') {
     const rev = s.rev || 1;
     if (rev < 2) { delete s.routines.hands; Object.assign(s.routines, handsSeed()); }
     if (rev < 3) Object.assign(s.routines, faceSeed());
     if (rev < 4) Object.assign(s.routines, hairSeed());
-    s.rev = Math.max(rev, 4);
+    if (rev < 5) {
+      const move = (rid, name, from, to) => {
+        for (const st of (s.routines[rid] && s.routines[rid].steps) || []) {
+          if (st.name === name && JSON.stringify(st.sched) === JSON.stringify({ type: 'weekdays', days: from })) st.sched.days = to;
+        }
+      };
+      move('hairAM', 'Minoxidil', [1, 2, 3, 4, 5, 6], [2, 3, 4, 5, 6, 0]);
+      move('hairPM', 'Minoxidil', [1, 2, 3, 4, 5, 6], [2, 3, 4, 5, 6, 0]);
+      move('hairPM', 'Microneedling', [0], [1]);
+    }
+    s.rev = Math.max(rev, 5);
   }
   return s;
 }
