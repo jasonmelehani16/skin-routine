@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Skin Routine</title>
+  <meta name="theme-color" content="#f7f7f5" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121413" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="view"></main>
+
+  <nav id="tabs" aria-label="Sections">
+    <button data-tab="today" type="button">Today</button>
+    <button data-tab="history" type="button">History</button>
+    <button data-tab="routines" type="button">Routines</button>
+    <button data-tab="data" type="button">Data</button>
+  </nav>
+
+  <dialog id="stepDialog">
+    <form id="stepForm" autocomplete="off">
+      <h2 id="stepDialogTitle">Step</h2>
+
+      <label>Name
+        <input id="fName" required maxlength="60" placeholder="e.g. Cleanser">
+      </label>
+      <label>Product
+        <input id="fProduct" maxlength="80" placeholder="e.g. Brand and product name">
+      </label>
+      <label>How to
+        <textarea id="fHow" rows="3" maxlength="300" placeholder="Short instructions"></textarea>
+      </label>
+
+      <label>Schedule
+        <select id="fSched">
+          <option value="daily">Every day</option>
+          <option value="weekdays">Certain weekdays</option>
+          <option value="every">Every N days</option>
+        </select>
+      </label>
+      <div id="fDaysWrap" class="days" hidden></div>
+      <label id="fEveryWrap" hidden>Repeat every (days)
+        <input id="fEvery" type="number" min="2" max="60" value="2" inputmode="numeric">
+      </label>
+
+      <div class="dialog-actions">
+        <button type="button" id="fDelete" class="danger">Delete</button>
+        <span class="spacer"></span>
+        <button type="button" id="fCancel">Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <input id="importFile" type="file" accept="application/json,.json" hidden>
+  <script src="app.js"></script>
+</body>
+</html>
