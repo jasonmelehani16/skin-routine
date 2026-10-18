@@ -45,9 +45,10 @@ function step(name, how, product, sched) {
 function handsSeed() {
   return {
     handsAM: { steps: [
-      step('Brush under the tips', 'Lather the brush with warm water and soap. Use the wide, soft bristle side to scrub across the nail tops and gently sweep under the tips. Never use the stiff top bristles under the nail.', 'Tweezerman Dual Surface Nail Brush'),
-      step('Dry and smooth edges', 'Dry hands fully and run your thumb across all ten fingertips. On any rough or peeling spot, do 3-4 light strokes in one direction until it feels glass-smooth.', 'Mont Bleu Glass File'),
-      step('Urea and ceramide barrier', 'Pea-sized drop on the back of one hand. Rub the backs together, then massage into the sides and base of each nail.', 'Eucerin Advanced Repair Hand Cream'),
+      step('Brush under the tips', 'Use warm water and soap, in the shower or at the sink, to clear debris from under the nail tips.', 'Tweezerman Dual Surface Nail Brush'),
+      step('Dry and smooth edges', 'Towel-dry thoroughly, then run your thumb over the nail tips. Use 3-4 light, one-way strokes on any rough spots or peeling edges.', 'Mont Bleu Glass File'),
+      step('Morning jojoba drop', 'Swipe a thin layer around the cuticles and side folds. Let it absorb for 30 seconds while you brush your teeth or get dressed. Keeps the keratin flexible.', 'Bliss Kiss Oil Pen'),
+      step('Eucerin barrier', 'Pea-sized dot on the back of one hand. Massage over both hands and work it into the nail folds, over the jojoba oil. Absorbs fast without leaving palms slick.', 'Eucerin Advanced Repair Hand Cream'),
     ] },
     handsPM: { steps: [
       step('Hangnail check', 'After the shower, while skin is soft, check the nail borders. Snip only detached white tags flush at the base. Never cut live pink skin.', 'Tweezerman 1/2 Jaw Nippers', { type: 'optional' }),
@@ -91,7 +92,7 @@ function hairSeed() {
 function seed() {
   return {
     version: 1,
-    rev: 6,
+    rev: 7,
     startDate: todayKey(),
     routines: { ...faceSeed(), ...handsSeed(), ...hairSeed() },
     log: {},
@@ -103,6 +104,7 @@ function seed() {
 // rev 4: hair routine added (existing routines untouched).
 // rev 5: hair moved from Sunday microneedling to Monday; only schedules still at the old default are changed.
 // rev 6: beard oil becomes a daily step; only changed if it is still set to "as needed".
+// rev 7: hands AM gains the morning jojoba step; existing steps keep their ids, the new one counts from today.
 function migrate(s) {
   if (s && s.routines && typeof s.routines === 'object') {
     const rev = s.rev || 1;
@@ -124,7 +126,17 @@ function migrate(s) {
         if (st.name === 'Beard oil' && st.sched && st.sched.type === 'optional') st.sched = { type: 'daily' };
       }
     }
-    s.rev = Math.max(rev, 6);
+    if (rev < 7) {
+      const old = (s.routines.handsAM && s.routines.handsAM.steps) || [];
+      const renamed = { 'Eucerin barrier': 'Urea and ceramide barrier' };
+      const fresh = handsSeed().handsAM.steps;
+      for (const st of fresh) {
+        const o = old.find((x) => x.name === st.name || x.name === renamed[st.name]);
+        if (o) st.id = o.id; else st.from = todayKey();
+      }
+      s.routines.handsAM = { steps: fresh };
+    }
+    s.rev = Math.max(rev, 7);
   }
   return s;
 }
@@ -158,6 +170,7 @@ const ui = {
 /* ---------- schedule + status ---------- */
 
 function isDue(s, key) {
+  if (s.from && key < s.from) return false; // steps added later don't rewrite past days
   const sc = s.sched || { type: 'daily' };
   if (sc.type === 'weekdays') return (sc.days || []).includes(parseKey(key).getDay());
   if (sc.type === 'every') {
@@ -494,7 +507,7 @@ document.getElementById('stepForm').addEventListener('submit', (e) => {
   const data = { name: f.name.value.trim(), product: f.product.value.trim(), how: f.how.value.trim(), sched };
   if (!data.name) return;
   if (editing.step) Object.assign(editing.step, data);
-  else state.routines[editing.rid].steps.push({ id: uid(), ...data });
+  else state.routines[editing.rid].steps.push({ id: uid(), from: todayKey(), ...data });
   save(); dlg.close(); render();
 });
 
