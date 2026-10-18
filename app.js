@@ -219,7 +219,7 @@ function h(tag, attrs, ...kids) {
     if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
     else el.setAttribute(k, v === true ? '' : v);
   }
-  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid);
+  for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) el.append(kid);
   return el;
 }
 
@@ -261,7 +261,8 @@ function stepRow(cl, s, key) {
 
 function optionalRows(cl, key) {
   const opt = optionalSteps(cl);
-  return opt.length && [h('div', { class: 'opt-label' }, 'As needed'), opt.map((s) => stepRow(cl, s, key))];
+  if (!opt.length) return null;
+  return [h('div', { class: 'opt-label' }, 'As needed'), ...opt.map((s) => stepRow(cl, s, key))];
 }
 
 function checklistCard(cl, key, showStreak) {
