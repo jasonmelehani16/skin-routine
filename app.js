@@ -4,18 +4,19 @@ const STORE = 'skin-routine-v1';
 const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const DOW_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// Four daily checklists. Hands share one step list across morning and night.
+// Four daily checklists, each with its own step list.
 const CHECKLISTS = [
   { id: 'faceAM', routine: 'faceAM', label: 'Face', when: 'Morning' },
-  { id: 'handsAM', routine: 'hands', label: 'Hands', when: 'Morning' },
+  { id: 'handsAM', routine: 'handsAM', label: 'Hands', when: 'Morning' },
   { id: 'facePM', routine: 'facePM', label: 'Face', when: 'Night' },
-  { id: 'handsPM', routine: 'hands', label: 'Hands', when: 'Night' },
+  { id: 'handsPM', routine: 'handsPM', label: 'Hands', when: 'Night' },
 ];
 
 const ROUTINE_TABS = [
   { id: 'faceAM', label: 'Face AM' },
   { id: 'facePM', label: 'Face PM' },
-  { id: 'hands', label: 'Hands' },
+  { id: 'handsAM', label: 'Hands AM' },
+  { id: 'handsPM', label: 'Hands PM' },
 ];
 
 /* ---------- dates ---------- */
@@ -37,12 +38,26 @@ function step(name, how, product, sched) {
   return { id: uid(), name, how, product, sched: sched || { type: 'daily' } };
 }
 
+function handsSeed() {
+  return {
+    handsAM: { steps: [
+      step('Brush under the tips', 'Lather the brush with warm water and soap. Use the wide, soft bristle side to scrub across the nail tops and gently sweep under the tips. Never use the stiff top bristles under the nail.', 'Tweezerman Dual Surface Nail Brush'),
+      step('Dry and smooth edges', 'Dry hands fully and run your thumb across all ten fingertips. On any rough or peeling spot, do 3-4 light strokes in one direction until it feels glass-smooth.', 'Mont Bleu Glass File'),
+      step('Urea and ceramide barrier', 'Pea-sized drop on the back of one hand. Rub the backs together, then massage into the sides and base of each nail.', 'Eucerin Advanced Repair Hand Cream'),
+    ] },
+    handsPM: { steps: [
+      step('Hangnail check', 'After the shower, while skin is soft, check the nail borders. Snip only detached white tags flush at the base. Never cut live pink skin.', 'Tweezerman 1/2 Jaw Nippers', { type: 'optional' }),
+      step('Jojoba oil', 'In bed, touch the dropper to the base of each nail (1-2 drops per hand total). Massage into the nail plate, cuticle fold, and down the sides of the thumbs.', 'Bliss Kiss Dropper Bottle'),
+      step('Aquaphor seal', 'Rice-grain dab on a fingertip, swiped over the oiled cuticles to lock the oil in overnight.', 'Aquaphor'),
+    ] },
+  };
+}
+
 function seed() {
-  const start = todayKey();
-  const every = (s) => ({ ...s, sched: { ...s.sched, start } });
   return {
     version: 1,
-    startDate: start,
+    rev: 2,
+    startDate: todayKey(),
     routines: {
       faceAM: { steps: [
         step('Cleanse', 'Wet face with lukewarm water, massage cleanser for 30 seconds, rinse.', 'Placeholder cleanser'),
@@ -54,13 +69,20 @@ function seed() {
         step('Treatment', 'Thin layer on dry skin, avoid the eye area.', 'Placeholder treatment', { type: 'weekdays', days: [1, 4] }),
         step('Moisturize', 'Apply a pea-sized amount over face and neck.', 'Placeholder moisturizer'),
       ] },
-      hands: { steps: [
-        step('Hand cream', 'Work into hands and cuticles.', 'Placeholder hand cream'),
-        every(step('Hand mask', 'Leave on for 10 minutes, then wipe off the excess.', 'Placeholder hand mask', { type: 'every', n: 7 })),
-      ] },
+      ...handsSeed(),
     },
     log: {},
   };
+}
+
+// rev 2: hands split into separate AM and PM lists, loaded with the real hands routine.
+function migrate(s) {
+  if (s && s.routines && typeof s.routines === 'object' && (s.rev || 1) < 2) {
+    delete s.routines.hands;
+    Object.assign(s.routines, handsSeed());
+    s.rev = 2;
+  }
+  return s;
 }
 
 function valid(s) {
@@ -71,7 +93,7 @@ function valid(s) {
 function load() {
   try {
     const raw = localStorage.getItem(STORE);
-    if (raw) { const s = JSON.parse(raw); if (valid(s)) return s; }
+    if (raw) { const s = migrate(JSON.parse(raw)); if (valid(s)) return s; }
   } catch (e) { /* storage unavailable or corrupt: start fresh */ }
   return seed();
 }
@@ -101,7 +123,10 @@ function isDue(s, key) {
   return true;
 }
 
-const dueSteps = (cl, key) => state.routines[cl.routine].steps.filter((s) => isDue(s, key));
+const isOptional = (s) => !!s.sched && s.sched.type === 'optional';
+// Optional ("as needed") steps are shown but never required, so they don't affect completion or streaks.
+const dueSteps = (cl, key) => state.routines[cl.routine].steps.filter((s) => !isOptional(s) && isDue(s, key));
+const optionalSteps = (cl) => state.routines[cl.routine].steps.filter(isOptional);
 const doneIds = (cl, key) => (state.log[key] && state.log[key][cl.id]) || [];
 const isDone = (cl, s, key) => doneIds(cl, key).includes(s.id);
 
@@ -166,6 +191,7 @@ function schedText(s) {
   const sc = s.sched || { type: 'daily' };
   if (sc.type === 'weekdays') return (sc.days || []).slice().sort().map((d) => DOW_NAMES[d]).join(', ') || 'No days';
   if (sc.type === 'every') return `Every ${sc.n} days`;
+  if (sc.type === 'optional') return 'As needed';
   return 'Daily';
 }
 
@@ -195,6 +221,11 @@ function stepRow(cl, s, key) {
   );
 }
 
+function optionalRows(cl, key) {
+  const opt = optionalSteps(cl);
+  return opt.length && [h('div', { class: 'opt-label' }, 'As needed'), opt.map((s) => stepRow(cl, s, key))];
+}
+
 function checklistCard(cl, key, showStreak) {
   const st = status(cl, key);
   const meta = [];
@@ -207,7 +238,8 @@ function checklistCard(cl, key, showStreak) {
     ),
     st.total
       ? dueSteps(cl, key).map((s) => stepRow(cl, s, key))
-      : h('div', { class: 'empty' }, 'Nothing due today'),
+      : !optionalSteps(cl).length && h('div', { class: 'empty' }, 'Nothing due today'),
+    optionalRows(cl, key),
   );
 }
 
@@ -271,12 +303,13 @@ function viewHistory() {
   ];
   for (const cl of CHECKLISTS) {
     const st = status(cl, sel);
-    if (!st.total) continue;
+    if (!st.total && !optionalSteps(cl).length) continue;
     out.push(h('section', { class: 'card' },
       h('div', { class: 'card-head' },
         h('div', { class: 'card-title' }, `${cl.label} · ${cl.when}`),
-        h('div', { class: 'card-meta' }, `${st.done}/${st.total}`)),
-      dueSteps(cl, sel).map((s) => stepRow(cl, s, sel))));
+        h('div', { class: 'card-meta' }, st.total ? `${st.done}/${st.total}` : '')),
+      dueSteps(cl, sel).map((s) => stepRow(cl, s, sel)),
+      optionalRows(cl, sel)));
   }
   if (!so.total) out.push(h('div', { class: 'empty' }, 'Nothing was due on this day.'));
   return out;
@@ -290,7 +323,6 @@ function viewRoutines() {
     h('div', { class: 'seg' }, ROUTINE_TABS.map((r) =>
       h('button', { type: 'button', 'aria-current': String(r.id === rid), onclick: () => { ui.routineTab = r.id; render(); } }, r.label))),
   ];
-  if (rid === 'hands') out.push(h('div', { class: 'note' }, 'One list, used for both your morning and night hands checklists.'));
   const card = h('section', { class: 'card' });
   if (!steps.length) card.append(h('div', { class: 'empty' }, 'No steps yet.'));
   steps.forEach((s, i) => {
@@ -342,7 +374,7 @@ document.getElementById('importFile').addEventListener('change', async (e) => {
   e.target.value = '';
   if (!file) return;
   try {
-    const s = JSON.parse(await file.text());
+    const s = migrate(JSON.parse(await file.text()));
     if (!valid(s)) throw new Error('bad shape');
     if (!confirm('Replace everything on this phone with this backup?')) return;
     state = s; save(); ui.selected = todayKey(); render();
@@ -404,7 +436,8 @@ document.getElementById('stepForm').addEventListener('submit', (e) => {
   e.preventDefault();
   const type = f.sched.value;
   let sched = { type: 'daily' };
-  if (type === 'weekdays') {
+  if (type === 'optional') sched = { type };
+  else if (type === 'weekdays') {
     if (!pickedDays.size) { alert('Pick at least one weekday.'); return; }
     sched = { type, days: [...pickedDays].sort() };
   } else if (type === 'every') {

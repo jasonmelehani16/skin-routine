@@ -84,6 +84,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .step-name { font-weight: 500; }
 .step.done .step-name { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
 .step-sub { font-size: 13px; color: var(--muted); }
+.opt-label { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 12px 0 0; border-top: 1px solid var(--line); margin-top: 4px; }
+.opt-label + .step { border-top: 0; padding-top: 6px; }
 .step-how { font-size: 14px; margin-top: 6px; color: var(--text); white-space: pre-wrap; }
 
 /* Calendar */
